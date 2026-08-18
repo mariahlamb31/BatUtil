@@ -1,6 +1,6 @@
 <!-- : Begin batch script
 @setlocal DisableDelayedExpansion
-@set uivr=v124x
+@set uivr=v125f
 @echo off
 :: Change to 1 to enable debug mode
 set _Debug=0
@@ -389,9 +389,9 @@ set "MetadataESD=!_UUP!\%uups_esd1%"&set "_flg=%edition1%"&set "arch=%arch1%"&se
 goto :MAINMENU
 
 :MULTIMENU
-if %AutoStart% equ 1 (set AIO=1&set WIMFILE=install.wim&goto :ISO)
+if %AutoStart% equ 1 (set AIO=1&set WIMFILE=install.wim&set wim2esd=0&goto :ISO)
 if %AutoStart% equ 2 (set AIO=1&set WIMFILE=install.esd&goto :ISO)
-if %AutoStart% equ 3 (set AIO=1&set WIMFILE=install.wim&goto :Single)
+if %AutoStart% equ 3 (set AIO=1&set WIMFILE=install.wim&set wim2esd=0&goto :Single)
 if %AutoStart% equ 4 (set AIO=1&set WIMFILE=install.esd&goto :Single)
 @cls
 set _index=
@@ -444,9 +444,9 @@ if defined DrvSrcPE set DrvOpt=1
 goto :eof
 
 :MAINMENU
-if %AutoStart% equ 1 (set WIMFILE=install.wim&goto :ISO)
+if %AutoStart% equ 1 (set WIMFILE=install.wim&set wim2esd=0&goto :ISO)
 if %AutoStart% equ 2 (set WIMFILE=install.esd&goto :ISO)
-if %AutoStart% equ 3 (set WIMFILE=install.wim&goto :Single)
+if %AutoStart% equ 3 (set WIMFILE=install.wim&set wim2esd=0&goto :Single)
 if %AutoStart% equ 4 (set WIMFILE=install.esd&goto :Single)
 @cls
 set userinp=
@@ -471,8 +471,8 @@ if %userinp% equ 6 goto :CONFMENU
 if %userinp% equ 5 if %EXPRESS% equ 0 (set WIMFILE=install.esd&goto :Single)
 if %userinp% equ 4 if %EXPRESS% equ 0 (set WIMFILE=install.esd&goto :ISO)
 if %userinp% equ 3 goto :INFO%_ta2%
-if %userinp% equ 2 (set WIMFILE=install.wim&goto :Single)
-if %userinp% equ 1 (set WIMFILE=install.wim&goto :ISO)
+if %userinp% equ 2 (set WIMFILE=install.wim&set wim2esd=0&goto :Single)
+if %userinp% equ 1 (set WIMFILE=install.wim&set wim2esd=0&goto :ISO)
 goto :MAINMENU
 
 :CONFMENU
@@ -583,6 +583,8 @@ if %_build% geq 26052 (set LCUwinre=0)
 if %_build% lss 22621 set LCUmsuExpand=0
 if %_build% geq 26052 (
 if %LCUmsuExpand% equ 2 (set LCUmsuExpand=0) else (set LCUmsuExpand=1)
+if %_updexist% equ 1 if exist "!_UUP!\*Windows1*-KB5101682*.msu" set LCUmsuExpand=0
+if %_updexist% equ 1 if exist "!_UUP!\*Windows1*-KB5101683*.msu" set LCUmsuExpand=0
 )
 if %_build% geq 25380 (
 if %Cleanup% equ 0 set DisableUpdatingUpgrade=1
@@ -801,6 +803,8 @@ if %_build% geq 26052 (set LCUwinre=0)
 if %_build% lss 22621 set LCUmsuExpand=0
 if %_build% geq 26052 (
 if %LCUmsuExpand% equ 2 (set LCUmsuExpand=0) else (set LCUmsuExpand=1)
+if %_updexist% equ 1 if exist "!_UUP!\*Windows1*-KB5101682*.msu" set LCUmsuExpand=0
+if %_updexist% equ 1 if exist "!_UUP!\*Windows1*-KB5101683*.msu" set LCUmsuExpand=0
 )
 if %_build% geq 25380 (
 if %Cleanup% equ 0 set DisableUpdatingUpgrade=1
@@ -1624,7 +1628,7 @@ if not "%_f_%"=="dpx.dll" set "_pspsfx=%SystemRoot%\SysWOW64\WindowsPowerShell\v
 if exist "%_t_%\%_f_%" goto :get_end
 set msuwim=0
 set "uupmsu="
-if exist "!_UUP!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*-KB*.msu"') do (
+if exist "!_UUP!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_UUP!\*Windows1*-KB*.msu"') do (
 expand.exe -d -f:*Windows*.psf "!_UUP!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#")
 wimlib-imagex.exe dir "!_UUP!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#"&set msuwim=1)
 )
@@ -1976,7 +1980,7 @@ del /f /q "!_dest!\1*.cab" %_Nul3%
 copy /y "!_UUP!\%s_pkg%" "!_dest!\1%s_pkg%" %_Nul3%
 )
 if defined c_pkg if exist "!_dest!\3*.msu" if %_build% geq 26052 (
-for /f "tokens=* delims=" %%# in ('dir /b /on "!_dest!\3*.msu"') do if /i not "%%#"=="3%c_pkg%" (
+for /f "tokens=* delims=" %%# in ('dir /b /os "!_dest!\3*.msu"') do if /i not "%%#"=="3%c_pkg%" (
   set _tmp=%%#
   ren "!_dest!\%%#" "2!_tmp:~1!" %_Nul3%
   )
@@ -2006,7 +2010,7 @@ exit /b
 :external_cab
 for /f "tokens=2 delims=-" %%V in ('echo %packn%') do set packid=%%V
 set "uupmsu="
-if %_build% geq 21382 if exist "!_UUP!\*Windows1*%packid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*%packid%*%arch%*.msu"') do (
+if %_build% geq 21382 if exist "!_UUP!\*Windows1*%packid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_UUP!\*Windows1*%packid%*%arch%*.msu"') do (
 set "uupmsu=%%#"
 )
 if defined uupmsu (
@@ -2357,18 +2361,18 @@ set psfwim=1
 )
 if %psfnet% equ 0 set psfwim=0
 set _cab=0
-if %_build% geq 21382 if exist "!_UUP!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*-KB*.msu"') do (set "package=%%#"&call :sum2msu)
+if %_build% geq 21382 if exist "!_UUP!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_UUP!\*Windows1*-KB*.msu"') do (set "package=%%#"&call :sum2msu)
 if exist "!_UUP!\*defender-dism*%_bit%*.cab" for /f "tokens=* delims=" %%# in ('dir /b "!_UUP!\*defender-dism*%_bit%*.cab"') do (call set /a _cab+=1)
 if exist "!_UUP!\SSU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\SSU-*-*.cab"') do (call set /a _cab+=1)
 if exist "!_UUP!\*Windows1*-KB*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*-KB*.cab"') do (set "pkgn=%%~n#"&call :sum2cab)
 :: if %_cab% gtr 0 call :dk_color1 %Gray% "=== Extracting updates files . . ." 4 5
 set count=0&set isoupdate=&set tmpcmp=&set _rcu=
-if %_build% geq 21382 if exist "!_UUP!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*-KB*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :msu2)
+if %_build% geq 21382 if exist "!_UUP!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_UUP!\*Windows1*-KB*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :msu2)
 if exist "!_UUP!\*defender-dism*%_bit%*.cab" for /f "tokens=* delims=" %%# in ('dir /b "!_UUP!\*defender-dism*%_bit%*.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
 if exist "!_UUP!\SSU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\SSU-*-*.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
 if exist "!_UUP!\*Windows1*-KB*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*-KB*.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
 if defined tmpcmp if exist "!_UUP!\Windows1?.?-*%arch%_inout.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\Windows1?.?-*%arch%_inout.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
-if %psfwim% equ 1 if exist "!_cabdir!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\*Windows1*-KB*.wim"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :psfx2)
+if %psfwim% equ 1 if exist "!_cabdir!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /os "!_cabdir!\*Windows1*-KB*.wim"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :psfx2)
 if %psfwim% equ 1 if exist "!_UUP!\RCU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\RCU-*-*.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab3)
 goto :eof
 
@@ -2382,7 +2386,7 @@ goto :eof
 :sum2cab
 for /f "tokens=2 delims=-" %%V in ('echo %pkgn%') do set pkgid=%%V
 set "uupmsu="
-if %_build% geq 21382 if exist "!_UUP!\*Windows1*%pkgid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*%pkgid%*%arch%*.msu"') do (
+if %_build% geq 21382 if exist "!_UUP!\*Windows1*%pkgid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_UUP!\*Windows1*%pkgid%*%arch%*.msu"') do (
 set "uupmsu=%%#"
 )
 if defined uupmsu (
@@ -2395,7 +2399,7 @@ goto :eof
 :cab2
 for /f "tokens=2 delims=-" %%V in ('echo %pkgn%') do set pkgid=%%V
 set "uupmsu="
-if %_build% geq 21382 if exist "!_UUP!\*Windows1*%pkgid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*%pkgid%*%arch%*.msu"') do (
+if %_build% geq 21382 if exist "!_UUP!\*Windows1*%pkgid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_UUP!\*Windows1*%pkgid%*%arch%*.msu"') do (
 set "uupmsu=%%#"
 )
 if defined uupmsu (
@@ -2772,7 +2776,7 @@ if exist "%~1\Microsoft-Windows-Ge-Client-Server-Beta-Version-Enablement-Package
 if exist "%~1\Microsoft-Windows-Ge-Client-Server-26200-Version-Enablement-Package~*.mum" set "_fixSV=26200"&set "_fixEP=26200"
 if exist "%~1\Microsoft-Windows-Ge-Client-Server-26220-Version-Enablement-Package~*.mum" set "_fixSV=26220"&set "_fixEP=26220"
 if exist "%~1\Microsoft-Windows-Ge-Client-Server-26300-Version-Enablement-Package~*.mum" set "_fixSV=26300"&set "_fixEP=26300"
-if exist "%~1\Microsoft-Windows-Ge-Client-Server-26320-Version-Enablement-Package~*.mum" set "_fixSV=26320"&set "_fixEP=26320"
+if exist "%~1\Microsoft-Windows-Ge-Client-Server-26340-Version-Enablement-Package~*.mum" set "_fixSV=26340"&set "_fixEP=26340"
 if exist "%~1\Microsoft-Windows-Client-Br-28020-Version-Enablement-Package~*.mum" set "_fixSV=28020"&set "_fixEP=28020"
 if exist "%~1\Microsoft-Windows-Client-Br-28100-Version-Enablement-Package~*.mum" set "_fixSV=28100"&set "_fixEP=28100"
 if exist "%~1\Microsoft-Windows-Client-Br-28120-Version-Enablement-Package~*.mum" set "_fixSV=28120"&set "_fixEP=28120"
@@ -2894,8 +2898,8 @@ if exist "%mumtarget%\Windows\Servicing\Packages\Microsoft-Windows-ServerAzureSt
 )
 if exist "!_UUP!\SSU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\SSU-*-*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
 if exist "!_UUP!\*Windows1*-KB*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*-KB*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
-if %_build% geq 21382 if exist "!_UUP!\*Windows1*-KB*.msu" (for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\*Windows1*-KB*.msu"') do if defined msu_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
-if %psfwim% equ 1 if exist "!_cabdir!\*Windows1*-KB*.wim" (for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\*Windows1*-KB*.wim"') do if defined psfx_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
+if %_build% geq 21382 if exist "!_UUP!\*Windows1*-KB*.msu" (for /f "tokens=* delims=" %%# in ('dir /b /os "!_UUP!\*Windows1*-KB*.msu"') do if defined msu_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
+if %psfwim% equ 1 if exist "!_cabdir!\*Windows1*-KB*.wim" (for /f "tokens=* delims=" %%# in ('dir /b /os "!_cabdir!\*Windows1*-KB*.wim"') do if defined psfx_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
 if %psfwim% equ 1 if exist "!_UUP!\RCU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_UUP!\RCU-*-*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procrcu)
 if not exist "%mumtarget%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if exist "!_UUP!\*defender-dism*%_bit%*.cab" (for /f "tokens=* delims=" %%# in ('dir /b "!_UUP!\*defender-dism*%_bit%*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
 call :wds_add
@@ -3405,7 +3409,7 @@ goto :eof
 :setlcu
 if exist "!_cabdir!\LCUall\*.msu" (
 if defined lcuall goto :eof
-for /f "tokens=* delims=" %%# in ('dir /b /a:-d "!_cabdir!\LCUall\*.msu"') do set "lcumsu=!lcumsu! "!_cabdir!\LCUall\%%#""
+for /f "tokens=* delims=" %%# in ('dir /b /os /a:-d "!_cabdir!\LCUall\*.msu"') do set "lcumsu=!lcumsu! "!_cabdir!\LCUall\%%#""
 set lcuall=1
 ) else (
 set "lcumsu=!lcumsu! "!_UUP!\%package%""
